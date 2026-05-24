@@ -7,28 +7,27 @@ import (
 	"strconv"
 )
 
-const (
-	STRING = '+'
-	INTEGER = ':'
-	ARRAY = '*'
-	BULK = '$'
-	ERROR = '-'
-)
-
-type Value struct {
-	typ string
-	str string
-	num int
-	bulk string
-	array []Value
-}
-
 type Resp struct {
 	reader *bufio.Reader
 }
 
 func NewResp(rd io.Reader) *Resp {
 	return &Resp{reader: bufio.NewReader(rd)}
+}
+
+func (r *Resp) Read() (Value, error) {
+	_type, err := r.reader.ReadByte()
+	if err != nil { return Value{}, err }
+
+	switch _type {
+		case ARRAY:
+			return r.readArray()
+		case BULK:
+			return r.readBulk()
+		default:
+			fmt.Printf("Unknown type: %v", string(_type))
+			return Value{}, nil
+	}
 }
 
 func (r *Resp) readLine() (line []byte, n int, err error) {
@@ -51,21 +50,6 @@ func (r *Resp) readInteger() (x int, n int, err error) {
 	i64, err := strconv.ParseInt(string(line), 10, 64)
 	if err != nil { return 0, n, err }
 	return int(i64), n, nil
-}
-
-func (r *Resp) Read() (Value, error) {
-	_type, err := r.reader.ReadByte()
-	if err != nil { return Value{}, err }
-
-	switch _type {
-		case ARRAY:
-			return r.readArray()
-		case BULK:
-			return r.readBulk()
-		default:
-			fmt.Printf("Unknown type: %v", string(_type))
-			return Value{}, nil
-	}
 }
 
 func (r *Resp) readArray() (Value, error) {
